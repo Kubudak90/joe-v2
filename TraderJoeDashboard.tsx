@@ -164,6 +164,46 @@ const generateMockBinData = (activeBin: number, count: number = 150): BinData[] 
   return data;
 };
 
+const generatePositionBinData = (position: Position): BinData[] => {
+  const data: BinData[] = [];
+  const minBin = position.minBin;
+  const maxBin = position.maxBin;
+  const binCount = maxBin - minBin + 1;
+
+  // Parse price range
+  const minPrice = parseFloat(position.minPrice.replace('$', '').replace(',', ''));
+  const maxPrice = parseFloat(position.maxPrice.replace('$', '').replace(',', ''));
+  const priceStep = (maxPrice - minPrice) / binCount;
+
+  // Parse total position value for distribution
+  const totalValue = parseFloat(position.totalValue.replace('$', '').replace(',', ''));
+  const avgLiquidityPerBin = totalValue / binCount;
+
+  for (let i = 0; i <= binCount; i++) {
+    const binId = minBin + i;
+    const priceX = minPrice + (priceStep * i);
+
+    // Create varied liquidity distribution (higher in middle bins)
+    const distanceFromCenter = Math.abs(i - binCount / 2);
+    const liquidityMultiplier = 1 - (distanceFromCenter / binCount) * 0.3;
+    const userLiquidity = avgLiquidityPerBin * liquidityMultiplier * (0.8 + Math.random() * 0.4);
+
+    data.push({
+      binId,
+      priceX,
+      priceY: 1 / priceX,
+      liquidityUSD: userLiquidity * 1.5, // Total pool liquidity (user has part of it)
+      userLiquidity,
+      totalLiquidity: userLiquidity * 1.5,
+      compositionX: 50 + (i > binCount / 2 ? 10 : -10) * Math.random(),
+      compositionY: 50 + (i < binCount / 2 ? 10 : -10) * Math.random(),
+      utilization: 40 + Math.random() * 40,
+    });
+  }
+
+  return data;
+};
+
 const generateMockPositions = (): Position[] => {
   return [
     {
@@ -454,6 +494,8 @@ const TraderJoeDashboard: React.FC = () => {
   // Removal State
   const [removePercentage, setRemovePercentage] = useState(100);
   const [claimFeesOnRemove, setClaimFeesOnRemove] = useState(true);
+  const [removalMode, setRemovalMode] = useState<'percentage' | 'bins'>('percentage');
+  const [selectedBinsForRemoval, setSelectedBinsForRemoval] = useState<Set<number>>(new Set());
 
   // Mock Data
   const [tokens, setTokens] = useState<Token[]>([
@@ -518,6 +560,11 @@ const TraderJoeDashboard: React.FC = () => {
     const endIndex = Math.min(binData.length, startIndex + chartZoom);
     return binData.slice(startIndex, endIndex);
   }, [binData, chartZoom, chartOffset]);
+
+  const positionBinData = useMemo(() => {
+    if (!selectedPosition) return [];
+    return generatePositionBinData(selectedPosition);
+  }, [selectedPosition]);
 
   // ========== HANDLERS ==========
   const handleConnectWallet = async () => {
@@ -589,6 +636,32 @@ const TraderJoeDashboard: React.FC = () => {
       const offset = userBinIndex - Math.floor(binData.length / 2);
       setChartOffset(offset);
     }
+  };
+
+  const toggleBinSelection = (binId: number) => {
+    const newSelected = new Set(selectedBinsForRemoval);
+    if (newSelected.has(binId)) {
+      newSelected.delete(binId);
+    } else {
+      newSelected.add(binId);
+    }
+    setSelectedBinsForRemoval(newSelected);
+  };
+
+  const selectAllBins = () => {
+    const allBinIds = new Set(positionBinData.map(b => b.binId));
+    setSelectedBinsForRemoval(allBinIds);
+  };
+
+  const deselectAllBins = () => {
+    setSelectedBinsForRemoval(new Set());
+  };
+
+  const calculateSelectedBinsValue = () => {
+    if (selectedBinsForRemoval.size === 0 || positionBinData.length === 0) return 0;
+    const selectedBins = positionBinData.filter(b => selectedBinsForRemoval.has(b.binId));
+    const totalSelectedLiquidity = selectedBins.reduce((sum, b) => sum + b.userLiquidity, 0);
+    return totalSelectedLiquidity;
   };
 
   // ========== RENDER ==========
@@ -1443,11 +1516,15 @@ const TraderJoeDashboard: React.FC = () => {
       {/* Remove Liquidity Modal */}
       {showRemoveModal && selectedPosition && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl max-w-lg w-full p-6">
+          <div className="bg-gray-900 border border-gray-800 rounded-xl max-w-3xl w-full p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold">Remove Liquidity</h3>
               <button
-                onClick={() => setShowRemoveModal(false)}
+                onClick={() => {
+                  setShowRemoveModal(false);
+                  setRemovalMode('percentage');
+                  setSelectedBinsForRemoval(new Set());
+                }}
                 className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
               >
                 <X size={20} />
@@ -1458,39 +1535,174 @@ const TraderJoeDashboard: React.FC = () => {
               <div className="text-sm text-gray-400 mb-2">Pool</div>
               <div className="text-lg font-semibold">{selectedPosition.pool}</div>
               <div className="text-sm text-gray-500">
-                Your Liquidity: {selectedPosition.totalValue}
+                Your Liquidity: {selectedPosition.totalValue} • {positionBinData.length} bins
               </div>
             </div>
 
+            {/* Mode Toggle */}
             <div className="mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <label className="text-sm font-medium text-gray-400">Amount to Remove</label>
-                <span className="text-2xl font-bold text-blue-400">{removePercentage}%</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={removePercentage}
-                onChange={(e) => setRemovePercentage(parseInt(e.target.value))}
-                className="w-full"
-              />
-              <div className="flex gap-2 mt-3">
-                {[25, 50, 75, 100].map((pct) => (
-                  <button
-                    key={pct}
-                    onClick={() => setRemovePercentage(pct)}
-                    className={`flex-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                      removePercentage === pct
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-800 text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    {pct}%
-                  </button>
-                ))}
+              <div className="flex gap-2 p-1 bg-gray-800 rounded-lg">
+                <button
+                  onClick={() => setRemovalMode('percentage')}
+                  className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
+                    removalMode === 'percentage'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Percentage Mode
+                </button>
+                <button
+                  onClick={() => setRemovalMode('bins')}
+                  className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
+                    removalMode === 'bins'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Select Bins
+                </button>
               </div>
             </div>
+
+            {removalMode === 'percentage' ? (
+              /* Percentage Mode */
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-sm font-medium text-gray-400">Amount to Remove</label>
+                  <span className="text-2xl font-bold text-blue-400">{removePercentage}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={removePercentage}
+                  onChange={(e) => setRemovePercentage(parseInt(e.target.value))}
+                  className="w-full"
+                />
+                <div className="flex gap-2 mt-3">
+                  {[25, 50, 75, 100].map((pct) => (
+                    <button
+                      key={pct}
+                      onClick={() => setRemovePercentage(pct)}
+                      className={`flex-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        removePercentage === pct
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-800 text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      {pct}%
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              /* Bin Selection Mode */
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-sm font-medium text-gray-400">Select Bins to Remove</label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={selectAllBins}
+                      className="px-3 py-1 text-xs bg-gray-800 hover:bg-gray-700 rounded transition-colors"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      onClick={deselectAllBins}
+                      className="px-3 py-1 text-xs bg-gray-800 hover:bg-gray-700 rounded transition-colors"
+                    >
+                      Deselect All
+                    </button>
+                  </div>
+                </div>
+
+                {/* Bin Chart */}
+                <div className="mb-4 p-4 bg-gray-800/50 rounded-lg">
+                  <div className="text-xs text-gray-400 mb-3">
+                    Click bins to select/deselect • Selected: {selectedBinsForRemoval.size} / {positionBinData.length} bins
+                  </div>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={positionBinData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                      <XAxis
+                        dataKey="priceX"
+                        stroke="#9ca3af"
+                        tick={{ fontSize: 11 }}
+                        tickFormatter={(value) => `$${value.toFixed(0)}`}
+                      />
+                      <YAxis
+                        stroke="#9ca3af"
+                        tick={{ fontSize: 11 }}
+                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#1f2937',
+                          border: '1px solid #374151',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                        }}
+                        formatter={(value: any) => [`$${value.toLocaleString()}`, 'Your Liquidity']}
+                        labelFormatter={(binPrice) => `Price: $${binPrice.toFixed(2)}`}
+                      />
+                      <Bar
+                        dataKey="userLiquidity"
+                        radius={[4, 4, 0, 0]}
+                        onClick={(data: any) => toggleBinSelection(data.binId)}
+                        cursor="pointer"
+                      >
+                        {positionBinData.map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={selectedBinsForRemoval.has(entry.binId) ? '#ef4444' : '#0052FF'}
+                            opacity={selectedBinsForRemoval.has(entry.binId) ? 1 : 0.6}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                  <div className="mt-2 text-xs text-gray-500 text-center">
+                    Blue: Not selected • Red: Selected for removal
+                  </div>
+                </div>
+
+                {/* Bin List (scrollable) */}
+                <div className="max-h-48 overflow-y-auto space-y-2">
+                  {positionBinData.map((bin) => (
+                    <div
+                      key={bin.binId}
+                      onClick={() => toggleBinSelection(bin.binId)}
+                      className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                        selectedBinsForRemoval.has(bin.binId)
+                          ? 'bg-red-600/20 border-red-500/50'
+                          : 'bg-gray-800/50 border-gray-700/50 hover:border-gray-600'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedBinsForRemoval.has(bin.binId)}
+                            onChange={() => toggleBinSelection(bin.binId)}
+                            className="w-4 h-4"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <div>
+                            <div className="text-sm font-medium">Bin #{bin.binId}</div>
+                            <div className="text-xs text-gray-500">Price: ${bin.priceX.toFixed(2)}</div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-semibold">${bin.userLiquidity.toFixed(2)}</div>
+                          <div className="text-xs text-gray-500">Your liquidity</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="mb-6 p-4 bg-gray-800/50 rounded-lg">
               <div className="text-sm font-medium mb-3">You will receive:</div>
@@ -1498,21 +1710,36 @@ const TraderJoeDashboard: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-gray-400">{selectedPosition.tokenX}</span>
                   <span className="font-medium">
-                    {(parseFloat(selectedPosition.amountX) * removePercentage / 100).toFixed(4)} (
-                    ${(parseFloat(selectedPosition.valueX.replace('$', '').replace(',', '')) * removePercentage / 100).toFixed(2)})
+                    {removalMode === 'percentage'
+                      ? (parseFloat(selectedPosition.amountX) * removePercentage / 100).toFixed(4)
+                      : (parseFloat(selectedPosition.amountX) * (calculateSelectedBinsValue() / parseFloat(selectedPosition.totalValue.replace('$', '').replace(',', '')))).toFixed(4)
+                    } (
+                    ${removalMode === 'percentage'
+                      ? (parseFloat(selectedPosition.valueX.replace('$', '').replace(',', '')) * removePercentage / 100).toFixed(2)
+                      : (parseFloat(selectedPosition.valueX.replace('$', '').replace(',', '')) * (calculateSelectedBinsValue() / parseFloat(selectedPosition.totalValue.replace('$', '').replace(',', '')))).toFixed(2)
+                    })
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-400">{selectedPosition.tokenY}</span>
                   <span className="font-medium">
-                    {(parseFloat(selectedPosition.amountY) * removePercentage / 100).toFixed(2)} (
-                    ${(parseFloat(selectedPosition.valueY.replace('$', '').replace(',', '')) * removePercentage / 100).toFixed(2)})
+                    {removalMode === 'percentage'
+                      ? (parseFloat(selectedPosition.amountY) * removePercentage / 100).toFixed(2)
+                      : (parseFloat(selectedPosition.amountY) * (calculateSelectedBinsValue() / parseFloat(selectedPosition.totalValue.replace('$', '').replace(',', '')))).toFixed(2)
+                    } (
+                    ${removalMode === 'percentage'
+                      ? (parseFloat(selectedPosition.valueY.replace('$', '').replace(',', '')) * removePercentage / 100).toFixed(2)
+                      : (parseFloat(selectedPosition.valueY.replace('$', '').replace(',', '')) * (calculateSelectedBinsValue() / parseFloat(selectedPosition.totalValue.replace('$', '').replace(',', '')))).toFixed(2)
+                    })
                   </span>
                 </div>
                 <div className="pt-2 border-t border-gray-700 flex items-center justify-between font-semibold">
                   <span>Total</span>
                   <span>
-                    ${(parseFloat(selectedPosition.totalValue.replace('$', '').replace(',', '')) * removePercentage / 100).toFixed(2)}
+                    ${removalMode === 'percentage'
+                      ? (parseFloat(selectedPosition.totalValue.replace('$', '').replace(',', '')) * removePercentage / 100).toFixed(2)
+                      : calculateSelectedBinsValue().toFixed(2)
+                    }
                   </span>
                 </div>
               </div>
@@ -1534,14 +1761,18 @@ const TraderJoeDashboard: React.FC = () => {
 
             <div className="flex gap-3">
               <button
-                onClick={() => setShowRemoveModal(false)}
+                onClick={() => {
+                  setShowRemoveModal(false);
+                  setRemovalMode('percentage');
+                  setSelectedBinsForRemoval(new Set());
+                }}
                 className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg font-medium transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleRemoveLiquidity}
-                disabled={isLoading}
+                disabled={isLoading || (removalMode === 'bins' && selectedBinsForRemoval.size === 0)}
                 className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-700 disabled:cursor-not-allowed rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
               >
                 {isLoading ? (
@@ -1552,7 +1783,7 @@ const TraderJoeDashboard: React.FC = () => {
                 ) : (
                   <>
                     <Minus size={16} />
-                    Remove Liquidity
+                    Remove {removalMode === 'bins' ? `${selectedBinsForRemoval.size} Bin${selectedBinsForRemoval.size !== 1 ? 's' : ''}` : `${removePercentage}%`}
                   </>
                 )}
               </button>
