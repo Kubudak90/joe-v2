@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Cell, ReferenceLine, ComposedChart
+  Tooltip, ResponsiveContainer, Cell, ReferenceLine, ComposedChart, Brush
 } from 'recharts';
 import {
   Wallet, Settings, ChevronDown, Copy, ExternalLink, Plus, Minus,
@@ -496,6 +496,8 @@ const TraderJoeDashboard: React.FC = () => {
   const [claimFeesOnRemove, setClaimFeesOnRemove] = useState(true);
   const [removalMode, setRemovalMode] = useState<'percentage' | 'bins'>('percentage');
   const [selectedBinsForRemoval, setSelectedBinsForRemoval] = useState<Set<number>>(new Set());
+  const [binRangeStart, setBinRangeStart] = useState(0);
+  const [binRangeEnd, setBinRangeEnd] = useState(0);
 
   // Mock Data
   const [tokens, setTokens] = useState<Token[]>([
@@ -565,6 +567,14 @@ const TraderJoeDashboard: React.FC = () => {
     if (!selectedPosition) return [];
     return generatePositionBinData(selectedPosition);
   }, [selectedPosition]);
+
+  // Initialize bin range when position changes
+  useEffect(() => {
+    if (positionBinData.length > 0) {
+      setBinRangeStart(0);
+      setBinRangeEnd(Math.max(0, positionBinData.length - 1));
+    }
+  }, [positionBinData]);
 
   // ========== HANDLERS ==========
   const handleConnectWallet = async () => {
@@ -662,6 +672,56 @@ const TraderJoeDashboard: React.FC = () => {
     const selectedBins = positionBinData.filter(b => selectedBinsForRemoval.has(b.binId));
     const totalSelectedLiquidity = selectedBins.reduce((sum, b) => sum + b.userLiquidity, 0);
     return totalSelectedLiquidity;
+  };
+
+  const selectBinRange = (startIndex: number, endIndex: number) => {
+    if (!positionBinData.length) return;
+    const start = Math.min(startIndex, endIndex);
+    const end = Math.max(startIndex, endIndex);
+    const rangeBins = positionBinData.slice(start, end + 1).map(b => b.binId);
+    setSelectedBinsForRemoval(new Set(rangeBins));
+  };
+
+  const handleBinRangeChange = (start: number, end: number) => {
+    setBinRangeStart(start);
+    setBinRangeEnd(end);
+    selectBinRange(start, end);
+  };
+
+  const selectOutOfRangeBins = () => {
+    if (!selectedPosition || !selectedPool) return;
+    const activeBin = selectedPool.activeBin;
+    const outOfRangeBins = positionBinData
+      .filter(b => b.binId < activeBin || b.binId > activeBin)
+      .map(b => b.binId);
+    setSelectedBinsForRemoval(new Set(outOfRangeBins));
+  };
+
+  const selectInRangeBins = () => {
+    if (!selectedPosition || !selectedPool) return;
+    const activeBin = selectedPool.activeBin;
+    const inRangeBins = positionBinData
+      .filter(b => b.binId === activeBin)
+      .map(b => b.binId);
+    setSelectedBinsForRemoval(new Set(inRangeBins));
+  };
+
+  const selectLowLiquidityBins = () => {
+    if (!positionBinData.length) return;
+    const avgLiquidity = positionBinData.reduce((sum, b) => sum + b.userLiquidity, 0) / positionBinData.length;
+    const lowLiqBins = positionBinData
+      .filter(b => b.userLiquidity < avgLiquidity * 0.7)
+      .map(b => b.binId);
+    setSelectedBinsForRemoval(new Set(lowLiqBins));
+  };
+
+  const selectHighLiquidityBins = () => {
+    if (!positionBinData.length) return;
+    const avgLiquidity = positionBinData.reduce((sum, b) => sum + b.userLiquidity, 0) / positionBinData.length;
+    const highLiqBins = positionBinData
+      .filter(b => b.userLiquidity > avgLiquidity * 1.3)
+      .map(b => b.binId);
+    setSelectedBinsForRemoval(new Set(highLiqBins));
   };
 
   // ========== RENDER ==========
@@ -1612,7 +1672,87 @@ const TraderJoeDashboard: React.FC = () => {
                       onClick={deselectAllBins}
                       className="px-3 py-1 text-xs bg-gray-800 hover:bg-gray-700 rounded transition-colors"
                     >
-                      Deselect All
+                      Clear
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quick Selection Presets */}
+                <div className="mb-4 p-3 bg-gray-800/30 rounded-lg">
+                  <div className="text-xs text-gray-500 mb-2">Quick Select:</div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={selectOutOfRangeBins}
+                      className="px-3 py-1.5 text-xs bg-orange-600/20 hover:bg-orange-600/30 border border-orange-500/30 text-orange-400 rounded transition-colors"
+                    >
+                      Out of Range
+                    </button>
+                    <button
+                      onClick={selectInRangeBins}
+                      className="px-3 py-1.5 text-xs bg-green-600/20 hover:bg-green-600/30 border border-green-500/30 text-green-400 rounded transition-colors"
+                    >
+                      In Range
+                    </button>
+                    <button
+                      onClick={selectLowLiquidityBins}
+                      className="px-3 py-1.5 text-xs bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 text-blue-400 rounded transition-colors"
+                    >
+                      Low Liquidity
+                    </button>
+                    <button
+                      onClick={selectHighLiquidityBins}
+                      className="px-3 py-1.5 text-xs bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-400 rounded transition-colors"
+                    >
+                      High Liquidity
+                    </button>
+                  </div>
+                </div>
+
+                {/* Range Slider for Bin Selection */}
+                <div className="mb-4 p-4 bg-gray-800/30 rounded-lg">
+                  <div className="text-xs text-gray-400 mb-3">
+                    Or drag slider to select bin range:
+                  </div>
+                  <div className="mb-3">
+                    <div className="flex items-center justify-between mb-2 text-xs">
+                      <span className="text-gray-500">Start: Bin #{positionBinData[binRangeStart]?.binId || '—'}</span>
+                      <span className="text-gray-500">End: Bin #{positionBinData[binRangeEnd]?.binId || '—'}</span>
+                    </div>
+                    <div className="space-y-2">
+                      <input
+                        type="range"
+                        min="0"
+                        max={Math.max(0, positionBinData.length - 1)}
+                        value={binRangeStart}
+                        onChange={(e) => {
+                          const newStart = parseInt(e.target.value);
+                          setBinRangeStart(newStart);
+                          if (newStart <= binRangeEnd) {
+                            handleBinRangeChange(newStart, binRangeEnd);
+                          }
+                        }}
+                        className="w-full"
+                      />
+                      <input
+                        type="range"
+                        min="0"
+                        max={Math.max(0, positionBinData.length - 1)}
+                        value={binRangeEnd}
+                        onChange={(e) => {
+                          const newEnd = parseInt(e.target.value);
+                          setBinRangeEnd(newEnd);
+                          if (binRangeStart <= newEnd) {
+                            handleBinRangeChange(binRangeStart, newEnd);
+                          }
+                        }}
+                        className="w-full"
+                      />
+                    </div>
+                    <button
+                      onClick={() => handleBinRangeChange(binRangeStart, binRangeEnd)}
+                      className="mt-2 w-full px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 text-blue-400 rounded text-xs transition-colors"
+                    >
+                      Select Range: {Math.abs(binRangeEnd - binRangeStart) + 1} bins
                     </button>
                   </div>
                 </div>
@@ -1620,9 +1760,9 @@ const TraderJoeDashboard: React.FC = () => {
                 {/* Bin Chart */}
                 <div className="mb-4 p-4 bg-gray-800/50 rounded-lg">
                   <div className="text-xs text-gray-400 mb-3">
-                    Click bins to select/deselect • Selected: {selectedBinsForRemoval.size} / {positionBinData.length} bins
+                    💡 Click bars to toggle • Drag brush below to select range • Selected: {selectedBinsForRemoval.size} / {positionBinData.length} bins
                   </div>
-                  <ResponsiveContainer width="100%" height={200}>
+                  <ResponsiveContainer width="100%" height={250}>
                     <BarChart data={positionBinData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                       <XAxis
@@ -1660,6 +1800,19 @@ const TraderJoeDashboard: React.FC = () => {
                           />
                         ))}
                       </Bar>
+                      <Brush
+                        dataKey="binId"
+                        height={30}
+                        stroke="#0052FF"
+                        fill="#1f2937"
+                        onChange={(range: any) => {
+                          if (range && range.startIndex !== undefined && range.endIndex !== undefined) {
+                            selectBinRange(range.startIndex, range.endIndex);
+                            setBinRangeStart(range.startIndex);
+                            setBinRangeEnd(range.endIndex);
+                          }
+                        }}
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                   <div className="mt-2 text-xs text-gray-500 text-center">
