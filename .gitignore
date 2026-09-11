@@ -3,3 +3,5 @@ cache
 out
 broadcast
 slither-results.json
+frontend/node_modules
+frontend/dist
