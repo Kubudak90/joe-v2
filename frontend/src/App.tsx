@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Landing } from "./components/Landing";
 import { LiquidityView } from "./components/LiquidityView";
 import { Nav } from "./components/Nav";
@@ -8,12 +8,34 @@ import { SwapPanel } from "./components/SwapPanel";
 import type { AppView } from "./lib/data";
 
 const DEMO_ADDRESS = "0x7a3F9c2B8e1D4A6C905E2f7b4D8A1C3E6F9B2D5A";
+const VIEWS: AppView[] = ["home", "swap", "pools", "liquidity", "positions"];
+
+function viewFromHash(): AppView {
+  const raw = window.location.hash.replace(/^#\/?/, "");
+  return VIEWS.includes(raw as AppView) ? (raw as AppView) : "home";
+}
 
 export default function App() {
-  const [view, setView] = useState<AppView>("home");
+  const [view, setView] = useState<AppView>(() =>
+    typeof window === "undefined" ? "home" : viewFromHash(),
+  );
   const [connected, setConnected] = useState(false);
   const [address, setAddress] = useState<string | null>(null);
   const [poolId, setPoolId] = useState("avax-usdc-20");
+
+  useEffect(() => {
+    const onHash = () => setView(viewFromHash());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
+  const navigate = (next: AppView) => {
+    setView(next);
+    const hash = next === "home" ? "#/" : `#/${next}`;
+    if (window.location.hash !== hash) {
+      window.location.hash = hash;
+    }
+  };
 
   const connect = () => {
     setConnected(true);
@@ -31,25 +53,25 @@ export default function App() {
 
   const goProvide = (id: string) => {
     setPoolId(id);
-    setView("liquidity");
+    navigate("liquidity");
   };
 
   return (
     <div className="app-shell">
       <Nav
         view={view}
-        onNavigate={setView}
+        onNavigate={navigate}
         connected={connected}
         address={address}
         onConnect={onConnectToggle}
       />
 
-      {view === "home" ? <Landing onNavigate={setView} /> : null}
+      {view === "home" ? <Landing onNavigate={navigate} /> : null}
       {view === "swap" ? (
         <SwapPanel connected={connected} onConnect={connect} />
       ) : null}
       {view === "pools" ? (
-        <PoolsView onProvide={goProvide} onNavigate={setView} />
+        <PoolsView onProvide={goProvide} onNavigate={navigate} />
       ) : null}
       {view === "liquidity" ? (
         <LiquidityView
@@ -69,7 +91,7 @@ export default function App() {
 
       <Nav
         view={view}
-        onNavigate={setView}
+        onNavigate={navigate}
         connected={connected}
         address={address}
         onConnect={onConnectToggle}
