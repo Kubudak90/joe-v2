@@ -85,9 +85,9 @@ export default function App() {
         <PositionsView connected={connected} onConnect={connect} />
       ) : null}
 
-      <p className="footer-note">
-        Demo UI for Joe V2 Liquidity Book contracts · mock balances & pools
-      </p>
+      {view !== "home" ? (
+        <p className="foot">Joe V2 Liquidity Book · demo balances & pools</p>
+      ) : null}
 
       <Nav
         view={view}

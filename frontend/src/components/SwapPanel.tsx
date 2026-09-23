@@ -47,82 +47,83 @@ export function SwapPanel({ connected, onConnect }: SwapProps) {
       onConnect();
       return;
     }
-    setToast(
-      `Demo swap submitted: ${amount || "0"} ${from} → ${formatNum(out, 4)} ${to}`,
-    );
+    setToast(`Swapped ${amount || "0"} ${from} → ${formatNum(out, 4)} ${to}`);
     window.setTimeout(() => setToast(null), 3200);
   };
 
   return (
-    <div className="page">
-      <div className="page-header animate-rise">
-        <div>
-          <h2>Swap</h2>
-          <p>Route through Liquidity Book bins for precise pricing.</p>
-        </div>
+    <div className="stage">
+      <div className="stage-head rise">
+        <h2>Swap</h2>
+        <p>Route through Liquidity Book bins for precise pricing.</p>
       </div>
 
-      <div className="panel panel-pad swap-shell animate-rise animate-rise-delay-1">
-        <div className="swap-field">
-          <div className="swap-field-top">
-            <span>You pay</span>
-            <span>
-              Balance {formatNum(TOKENS[from].balance, 2)} {from}
-            </span>
+      <div className="swap-stage rise rise-1">
+        <div className="swap-board">
+          <div className="swap-leg">
+            <div className="swap-leg-top">
+              <span>You pay</span>
+              <span>
+                {formatNum(TOKENS[from].balance, 2)} {from}
+              </span>
+            </div>
+            <div className="swap-leg-row">
+              <input
+                inputMode="decimal"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
+                placeholder="0.0"
+                aria-label="Amount to swap"
+              />
+              <TokenPicker value={from} exclude={to} onChange={setFrom} />
+            </div>
           </div>
-          <div className="swap-row">
-            <input
-              inputMode="decimal"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-              placeholder="0.0"
-              aria-label="Amount to swap"
-            />
-            <TokenPicker value={from} exclude={to} onChange={setFrom} />
-          </div>
-        </div>
 
-        <div className="swap-divider">
-          <button type="button" className="swap-flip" onClick={flip} aria-label="Flip tokens">
+          <button type="button" className="swap-switch" onClick={flip} aria-label="Flip tokens">
             ↕
           </button>
+
+          <div className="swap-leg">
+            <div className="swap-leg-top">
+              <span>You receive</span>
+              <span>
+                {formatNum(TOKENS[to].balance, 2)} {to}
+              </span>
+            </div>
+            <div className="swap-leg-row">
+              <input readOnly value={out ? formatNum(out, 4) : ""} placeholder="0.0" />
+              <TokenPicker value={to} exclude={from} onChange={setTo} />
+            </div>
+          </div>
+
+          <div className="swap-facts">
+            <div>
+              <span>Rate</span>
+              <span>
+                1 {from} = {formatNum(rate(from, to), 4)} {to}
+              </span>
+            </div>
+            <div>
+              <span>Impact</span>
+              <span>~0.08%</span>
+            </div>
+            <div>
+              <span>Route</span>
+              <span>LBPair · step 20</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className={`action-wide${connected ? " ember" : ""}`}
+            onClick={submit}
+            disabled={!amount || Number(amount) <= 0}
+          >
+            {connected ? "Swap" : "Connect to swap"}
+          </button>
+
+          {toast ? <div className="notice">{toast}</div> : null}
         </div>
-
-        <div className="swap-field">
-          <div className="swap-field-top">
-            <span>You receive</span>
-            <span>
-              Balance {formatNum(TOKENS[to].balance, 2)} {to}
-            </span>
-          </div>
-          <div className="swap-row">
-            <input readOnly value={out ? formatNum(out, 4) : ""} placeholder="0.0" />
-            <TokenPicker value={to} exclude={from} onChange={setTo} />
-          </div>
-        </div>
-
-        <div className="swap-meta">
-          <div>
-            <span>Rate</span>
-            <span>
-              1 {from} = {formatNum(rate(from, to), 4)} {to}
-            </span>
-          </div>
-          <div>
-            <span>Price impact</span>
-            <span>~0.08%</span>
-          </div>
-          <div>
-            <span>Route</span>
-            <span>LBPair · bin step 20</span>
-          </div>
-        </div>
-
-        <button type="button" className="swap-submit" onClick={submit} disabled={!amount || Number(amount) <= 0}>
-          {connected ? "Swap" : "Connect to swap"}
-        </button>
-
-        {toast ? <div className="toast">{toast}</div> : null}
       </div>
     </div>
   );
@@ -138,13 +139,12 @@ function TokenPicker({
   onChange: (s: TokenSymbol) => void;
 }) {
   return (
-    <label className="token-select">
-      <span className="token-dot" style={{ background: TOKENS[value].color }} />
+    <label className="token-pill">
+      <span className="token-orb" style={{ background: TOKENS[value].color }} />
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as TokenSymbol)}
         aria-label="Select token"
-        style={{ border: 0, background: "transparent", fontWeight: 700 }}
       >
         {(Object.keys(TOKENS) as TokenSymbol[])
           .filter((s) => s !== exclude)

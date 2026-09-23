@@ -1,6 +1,6 @@
 import type { AppView } from "../lib/data";
 
-const TABS: { id: AppView; label: string }[] = [
+const LINKS: { id: AppView; label: string }[] = [
   { id: "home", label: "Home" },
   { id: "swap", label: "Swap" },
   { id: "pools", label: "Pools" },
@@ -17,13 +17,13 @@ interface NavProps {
   mobile?: boolean;
 }
 
-export function BrandMark() {
+export function BrandGlyph() {
   return (
     <svg viewBox="0 0 64 64" fill="none" aria-hidden>
-      <rect x="12" y="36" width="6" height="16" rx="2" fill="#FF5A1F" />
-      <rect x="22" y="28" width="6" height="24" rx="2" fill="#FF8A4C" />
-      <rect x="32" y="18" width="6" height="34" rx="2" fill="#1FA7A0" />
-      <rect x="42" y="24" width="6" height="28" rx="2" fill="#7ED4CE" />
+      <rect x="10" y="38" width="7" height="16" rx="2" fill="#FF4D1A" />
+      <rect x="22" y="26" width="7" height="28" rx="2" fill="#FF7A45" />
+      <rect x="34" y="14" width="7" height="40" rx="2" fill="#18C5B5" />
+      <rect x="46" y="22" width="7" height="32" rx="2" fill="#7EE8DC" />
     </svg>
   );
 }
@@ -36,44 +36,40 @@ export function Nav({
   onConnect,
   mobile = false,
 }: NavProps) {
-  const tabs = (
-    <>
-      {TABS.map((tab) => (
-        <button
-          key={tab.id}
-          type="button"
-          className={`nav-tab${view === tab.id ? " active" : ""}`}
-          onClick={() => onNavigate(tab.id)}
-        >
-          {tab.label}
-        </button>
-      ))}
-    </>
-  );
+  const links = LINKS.map((link) => (
+    <button
+      key={link.id}
+      type="button"
+      className={`nav-link${view === link.id ? " active" : ""}`}
+      onClick={() => onNavigate(link.id)}
+    >
+      {link.label}
+    </button>
+  ));
 
   if (mobile) {
-    return <nav className="mobile-nav">{tabs}</nav>;
+    return <nav className="mobile-bar">{links}</nav>;
   }
 
   return (
-    <header className="top-nav">
-      <button type="button" className="brand" onClick={() => onNavigate("home")}>
-        <span className="brand-mark">
-          <BrandMark />
+    <header className="topbar">
+      <button type="button" className="brand-link" onClick={() => onNavigate("home")}>
+        <span className="brand-glyph">
+          <BrandGlyph />
         </span>
         Liquidity Book
       </button>
 
-      <nav className="nav-tabs">{tabs}</nav>
+      <nav className="nav-links">{links}</nav>
 
       <button
         type="button"
-        className={`wallet-btn${connected ? " connected" : ""}`}
+        className={`wallet${connected ? " live" : ""}`}
         onClick={onConnect}
       >
         {connected && address
           ? `${address.slice(0, 6)}…${address.slice(-4)}`
-          : "Connect wallet"}
+          : "Connect"}
       </button>
     </header>
   );

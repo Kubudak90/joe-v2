@@ -10,74 +10,69 @@ export function PositionsView({ connected, onConnect }: PositionsProps) {
   const fees = POSITIONS.reduce((s, p) => s + p.fees, 0);
 
   return (
-    <div className="page">
-      <div className="page-header animate-rise">
-        <div>
-          <h2>Positions</h2>
-          <p>Your Liquidity Book ranges and unclaimed fees.</p>
-        </div>
-        {!connected ? (
-          <button type="button" className="btn-primary" onClick={onConnect}>
-            Connect wallet
-          </button>
-        ) : null}
+    <div className="stage">
+      <div className="stage-head rise">
+        <h2>Positions</h2>
+        <p>Your Liquidity Book ranges and unclaimed fees.</p>
       </div>
 
-      <div className="stat-strip animate-rise animate-rise-delay-1">
-        <div className="panel panel-pad stat">
-          <span>Portfolio value</span>
+      <div className="metrics rise rise-1">
+        <div className="metric">
+          <span>Portfolio</span>
           <strong>{connected ? formatUsd(total) : "—"}</strong>
         </div>
-        <div className="panel panel-pad stat">
+        <div className="metric">
           <span>Unclaimed fees</span>
           <strong>{connected ? formatUsd(fees) : "—"}</strong>
         </div>
-        <div className="panel panel-pad stat">
-          <span>Open positions</span>
+        <div className="metric">
+          <span>Open</span>
           <strong>{connected ? POSITIONS.length : 0}</strong>
         </div>
       </div>
 
       {!connected ? (
-        <div className="panel panel-pad animate-rise animate-rise-delay-2" style={{ textAlign: "center" }}>
-          <p style={{ color: "var(--muted)", margin: "0.5rem 0 1rem" }}>
-            Connect a wallet to load demo positions backed by Joe V2 LBPair shares.
-          </p>
-          <button type="button" className="btn-primary" onClick={onConnect}>
+        <div className="empty surface rise rise-2">
+          <p>Connect a wallet to load demo LBPair positions.</p>
+          <button type="button" className="btn-ember" onClick={onConnect}>
             Connect wallet
           </button>
         </div>
       ) : (
-        <div className="panel grid-pools animate-rise animate-rise-delay-2">
+        <div className="list rise rise-2">
           {POSITIONS.map((pos) => (
-            <div key={pos.id} className="pool-row" style={{ gridTemplateColumns: "1.3fr 0.9fr 0.9fr 0.8fr auto" }}>
-              <div className="pool-pair">
+            <div
+              key={pos.id}
+              className="list-row"
+              style={{ gridTemplateColumns: "1.4fr 0.9fr 1fr 0.8fr auto" }}
+            >
+              <div className="pair">
                 <div>
                   {pos.tokenX}/{pos.tokenY}
                   <div style={{ marginTop: 6 }}>
-                    <span className={`chip ${pos.inRange ? "in-range" : "out-range"}`}>
+                    <span className={`status ${pos.inRange ? "on" : "off"}`}>
                       {pos.inRange ? "In range" : "Out of range"}
                     </span>
                   </div>
                 </div>
               </div>
-              <div className="pool-metric">
-                <small>Value</small>
+              <div className="cell">
+                <em>Value</em>
                 {formatUsd(pos.value)}
               </div>
-              <div className="pool-metric hide-sm">
-                <small>Range</small>
+              <div className="cell hide-sm">
+                <em>Range</em>
                 ${formatNum(pos.minPrice, 4)} – ${formatNum(pos.maxPrice, 4)}
               </div>
-              <div className="pool-metric">
-                <small>Fees</small>
+              <div className="cell">
+                <em>Fees</em>
                 {formatUsd(pos.fees)}
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button type="button" className="btn-sm">
+              <div className="row-actions">
+                <button type="button" className="btn-line">
                   Claim
                 </button>
-                <button type="button" className="btn-sm accent">
+                <button type="button" className="btn-fill">
                   Remove
                 </button>
               </div>
