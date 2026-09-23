@@ -239,7 +239,7 @@ a {
 .hero {
   min-height: calc(100vh - 76px);
   display: grid;
-  align-content: end;
+  align-content: start;
   padding: 0;
   position: relative;
   overflow: hidden;
@@ -249,7 +249,7 @@ a {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(243, 247, 250, 0.15) 0%, rgba(7, 16, 24, 0.55) 72%, rgba(7, 16, 24, 0.82) 100%),
+    linear-gradient(180deg, rgba(7, 16, 24, 0.28) 0%, rgba(7, 16, 24, 0.42) 40%, rgba(7, 16, 24, 0.8) 100%),
     linear-gradient(115deg, #1a3344 0%, #0d1c28 40%, #24160f 100%);
   animation: horizon 14s ease-in-out infinite;
 }
@@ -257,12 +257,13 @@ a {
 .hero-bins {
   position: absolute;
   inset: auto 0 0;
-  height: 58%;
+  height: min(46vh, 420px);
   display: flex;
   align-items: flex-end;
   gap: clamp(3px, 0.55vw, 8px);
   padding: 0 clamp(1rem, 3vw, 2.5rem) 0;
   z-index: 1;
+  mask-image: linear-gradient(180deg, transparent 0%, black 22%);
 }
 
 .hero-bins i {
@@ -283,7 +284,7 @@ a {
 .hero-content {
   position: relative;
   z-index: 2;
-  padding: clamp(2rem, 8vh, 5rem) clamp(1rem, 3vw, 2.75rem) clamp(2rem, 5vh, 3.5rem);
+  padding: clamp(3.5rem, 12vh, 7rem) clamp(1rem, 3vw, 2.75rem) clamp(2rem, 5vh, 3.5rem);
   color: #f5f8fa;
   max-width: 920px;
 }
@@ -295,6 +296,7 @@ a {
   font-size: clamp(3.4rem, 10vw, 7.5rem);
   line-height: 0.9;
   letter-spacing: -0.055em;
+  text-shadow: 0 12px 40px rgba(7, 16, 24, 0.4);
 }
 
 .hero-content h1 em {
