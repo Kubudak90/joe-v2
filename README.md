@@ -14,6 +14,14 @@ This repository contains the Liquidity Book contracts, as well as tests and depl
 
 For more information, go to the [documentation](https://docs.traderjoexyz.com/) and the [whitepaper](https://github.com/traderjoe-xyz/LB-Whitepaper/blob/main/Joe%20v2%20Liquidity%20Book%20Whitepaper.pdf).
 
+## Frontend UI
+
+A demo Liquidity Book interface lives in [`frontend/`](./frontend):
+
+```
+cd frontend && npm install && npm run dev
+```
+
 ## Install foundry
 
 Foundry documentation can be found [here](https://book.getfoundry.sh/forge/index.html).
