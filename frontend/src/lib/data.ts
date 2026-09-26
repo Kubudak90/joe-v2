@@ -3,6 +3,8 @@ export type TokenSymbol = "AVAX" | "USDC" | "WETH" | "JOE";
 export interface Token {
   symbol: TokenSymbol;
   name: string;
+  /** Short label used in the swap motion. */
+  face: string;
   decimals: number;
   color: string;
   balance: number;
@@ -51,6 +53,7 @@ export const TOKENS: Record<TokenSymbol, Token> = {
   AVAX: {
     symbol: "AVAX",
     name: "Avalanche",
+    face: "AVAX",
     decimals: 18,
     color: "#E84142",
     balance: 12.48,
@@ -58,6 +61,7 @@ export const TOKENS: Record<TokenSymbol, Token> = {
   USDC: {
     symbol: "USDC",
     name: "USD Coin",
+    face: "USDC",
     decimals: 6,
     color: "#2775CA",
     balance: 8420.55,
@@ -65,6 +69,7 @@ export const TOKENS: Record<TokenSymbol, Token> = {
   WETH: {
     symbol: "WETH",
     name: "Wrapped Ether",
+    face: "ETH",
     decimals: 18,
     color: "#627EEA",
     balance: 1.82,
@@ -72,6 +77,7 @@ export const TOKENS: Record<TokenSymbol, Token> = {
   JOE: {
     symbol: "JOE",
     name: "JoeToken",
+    face: "JOE",
     decimals: 18,
     color: "#FF5A1F",
     balance: 1250,

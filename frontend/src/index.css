@@ -429,6 +429,7 @@ a {
 }
 
 .swap-board {
+  position: relative;
   width: min(440px, 100%);
   padding: 1.5rem;
   border-radius: 28px;
@@ -437,6 +438,196 @@ a {
     var(--snow);
   border: 1px solid var(--line);
   box-shadow: 0 30px 80px rgba(7, 16, 24, 0.1);
+}
+
+.swap-board.in-flight .swap-switch {
+  pointer-events: none;
+}
+
+.route-line {
+  position: absolute;
+  left: 50%;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--from), var(--to));
+  transform-origin: top center;
+  animation: draw-route 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.packet {
+  position: absolute;
+  left: 50%;
+  z-index: 4;
+  width: 92px;
+  height: 92px;
+  margin-left: -46px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  pointer-events: none;
+  background: var(--from);
+  box-shadow: 0 18px 40px rgba(7, 16, 24, 0.22);
+  animation: packet-route 1.68s cubic-bezier(0.45, 0.05, 0.2, 1) both;
+}
+
+.packet-seal {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  height: 7px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.38);
+  transform: scaleX(0);
+  animation: seal-wrap 0.28s 0.18s ease both;
+}
+
+.packet-face,
+.packet-amt {
+  position: absolute;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.packet-face {
+  font-size: 0.95rem;
+  top: 22px;
+}
+
+.packet-amt {
+  font-size: 0.72rem;
+  bottom: 20px;
+  opacity: 0.9;
+  font-family: var(--font-body);
+}
+
+.packet-face.to,
+.packet-amt.to {
+  opacity: 0;
+  animation: face-in 0.18s 0.9s ease forwards;
+}
+
+.packet-face.from,
+.packet-amt.from {
+  animation: face-out 0.16s 0.84s ease forwards;
+}
+
+.swap-leg.sending .swap-leg-row input {
+  animation: send-away 0.55s ease both;
+}
+
+.swap-leg.receiving .swap-leg-row input {
+  animation: land-in 0.45s 1.12s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes draw-route {
+  from {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 0.7;
+  }
+}
+
+@keyframes seal-wrap {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes face-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes face-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes packet-route {
+  0% {
+    top: var(--from-y);
+    border-radius: 46px;
+    transform: scale(1.18);
+    opacity: 0;
+    background: var(--from);
+  }
+  12% {
+    opacity: 1;
+    border-radius: 40px;
+    transform: scale(1.12, 0.78);
+    background: var(--from);
+  }
+  26% {
+    top: var(--from-y);
+    border-radius: 18px;
+    transform: scale(0.58, 0.66);
+    background: var(--from);
+  }
+  48% {
+    top: calc((var(--from-y) + var(--to-y)) / 2);
+    border-radius: 16px;
+    transform: translateX(-42px) scale(0.54) rotate(-10deg);
+    background: var(--from);
+  }
+  66% {
+    border-radius: 22px;
+    transform: translateX(34px) scale(0.7) rotate(8deg);
+    background: var(--to);
+  }
+  84% {
+    top: var(--to-y);
+    border-radius: 32px;
+    transform: scale(1.08);
+    opacity: 1;
+    background: var(--to);
+  }
+  100% {
+    top: var(--to-y);
+    border-radius: 46px;
+    transform: scale(1.45);
+    opacity: 0;
+    background: var(--to);
+  }
+}
+
+@keyframes send-away {
+  35% {
+    transform: scale(0.9);
+    opacity: 0.25;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes land-in {
+  0% {
+    transform: scale(0.82);
+    opacity: 0.2;
+  }
+  65% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+  }
 }
 
 .swap-leg {
@@ -722,9 +913,116 @@ a {
 }
 
 /* Liquidity */
-.chart-box {
+.bin-stage {
+  position: relative;
   height: 300px;
+  overflow: hidden;
+}
+
+.bin-sweep {
+  position: absolute;
+  top: 36px;
+  bottom: 0;
+  width: 22%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  animation: bin-sweep 0.85s ease both;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.bin-tip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  letter-spacing: -0.03em;
+}
+
+.bin-tip small {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(7, 16, 24, 0.5);
+}
+
+.bin-sky {
+  position: absolute;
+  inset: 36px 0 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.bin-col {
+  flex: 1;
+  height: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  display: flex;
+  align-items: flex-end;
+  min-width: 0;
+}
+
+.bin-bar {
+  display: block;
   width: 100%;
+  height: var(--h);
+  border-radius: 8px 8px 3px 3px;
+  transform-origin: bottom center;
+  background: linear-gradient(180deg, #9cf0e8, #18c5b5 62%, #0d756c);
+  animation: bin-rise 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--d);
+  transition: height 0.55s cubic-bezier(0.22, 1, 0.36, 1), filter 0.2s ease;
+}
+
+.bin-col.hot .bin-bar {
+  background: linear-gradient(180deg, #ffb088, #ff4d1a 60%, #b8330d);
+  animation:
+    bin-rise 0.85s cubic-bezier(0.16, 1, 0.3, 1) both,
+    hot-glow 1.7s ease-in-out 0.9s infinite;
+  animation-delay: var(--d), 0.9s;
+}
+
+.bin-col.on .bin-bar,
+.bin-col:hover .bin-bar {
+  filter: brightness(1.12);
+}
+
+@keyframes bin-rise {
+  from {
+    transform: scaleY(0.06);
+    opacity: 0.35;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes hot-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(255, 77, 26, 0);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(255, 77, 26, 0.55);
+  }
+}
+
+@keyframes bin-sweep {
+  from {
+    left: -20%;
+  }
+  to {
+    left: 110%;
+  }
 }
 
 .form-grid {
@@ -807,6 +1105,17 @@ a {
 
 .mobile-bar {
   display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .packet,
+  .route-line,
+  .bin-bar,
+  .bin-sweep,
+  .swap-leg.sending .swap-leg-row input,
+  .swap-leg.receiving .swap-leg-row input {
+    animation: none !important;
+  }
 }
 
 @media (max-width: 920px) {

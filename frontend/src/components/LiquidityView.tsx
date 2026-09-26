@@ -1,21 +1,11 @@
-import { useMemo, useState } from "react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { useMemo, useState, type CSSProperties } from "react";
 import {
   POOLS,
   TOKENS,
   formatNum,
   formatUsd,
   generateBins,
+  type BinPoint,
   type DistShape,
 } from "../lib/data";
 
@@ -103,47 +93,11 @@ export function LiquidityView({
               Active ${formatNum(pool.price, 4)}
             </span>
           </div>
-          <div className="chart-box">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={visible} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="rgba(7,16,24,0.08)"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="price"
-                  tickFormatter={(v) => formatNum(Number(v), pool.price < 1 ? 4 : 2)}
-                  tick={{ fontSize: 11, fill: "rgba(7,16,24,0.5)" }}
-                  axisLine={false}
-                  tickLine={false}
-                  minTickGap={28}
-                />
-                <YAxis hide />
-                <Tooltip
-                  cursor={{ fill: "rgba(24,197,181,0.08)" }}
-                  contentStyle={{
-                    borderRadius: 12,
-                    border: "1px solid rgba(7,16,24,0.12)",
-                    fontSize: 13,
-                    background: "rgba(243,247,250,0.95)",
-                  }}
-                  formatter={(value: number) => [formatNum(value, 1), "Liquidity"]}
-                  labelFormatter={(label) => `Price $${formatNum(Number(label), 4)}`}
-                />
-                <ReferenceLine x={pool.price} stroke="#FF4D1A" strokeDasharray="4 4" />
-                <Bar dataKey="liquidity" radius={[7, 7, 2, 2]}>
-                  {visible.map((entry) => (
-                    <Cell
-                      key={entry.binId}
-                      fill={entry.isActive ? "#FF4D1A" : "#18C5B5"}
-                      fillOpacity={entry.isActive ? 1 : 0.8}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <BinStage
+            bins={visible}
+            shape={shape}
+            priceDigits={pool.price < 1 ? 4 : 2}
+          />
           <div className="range-line">
             <span>Min ${formatNum(minPrice, 4)}</span>
             <span>±{range} bins</span>
@@ -249,6 +203,54 @@ export function LiquidityView({
           </button>
           {toast ? <div className="notice">{toast}</div> : null}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function BinStage({
+  bins,
+  shape,
+  priceDigits,
+}: {
+  bins: BinPoint[];
+  shape: DistShape;
+  priceDigits: number;
+}) {
+  const [hover, setHover] = useState<number | null>(null);
+  const max = Math.max(...bins.map((b) => b.liquidity), 1);
+  const mid = Math.floor(bins.length / 2);
+  const active = bins.find((b) => b.isActive) ?? bins[mid];
+  const tip = hover != null ? bins.find((b) => b.binId === hover) : active;
+
+  return (
+    <div className="bin-stage" key={shape}>
+      <div className="bin-sweep" aria-hidden />
+      {tip ? (
+        <div className="bin-tip">
+          ${formatNum(tip.price, 4)}
+          <small>{tip.isActive ? "active bin" : "liquidity"}</small>
+        </div>
+      ) : null}
+      <div className="bin-sky" role="img" aria-label="Liquidity distribution">
+        {bins.map((bin, i) => (
+          <button
+            key={bin.binId}
+            type="button"
+            className={`bin-col${bin.isActive ? " hot" : ""}${hover === bin.binId ? " on" : ""}`}
+            style={{ "--d": `${Math.abs(i - mid) * 26}ms` } as CSSProperties}
+            onMouseEnter={() => setHover(bin.binId)}
+            onFocus={() => setHover(bin.binId)}
+            onMouseLeave={() => setHover(null)}
+            onBlur={() => setHover(null)}
+            aria-label={`Bin ${bin.binId} at $${formatNum(bin.price, priceDigits)}`}
+          >
+            <span
+              className="bin-bar"
+              style={{ "--h": `${Math.max(8, (bin.liquidity / max) * 100)}%` } as CSSProperties}
+            />
+          </button>
+        ))}
       </div>
     </div>
   );
